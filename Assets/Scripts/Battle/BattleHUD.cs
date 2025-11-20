@@ -33,7 +33,5 @@ public class BattleHUD : MonoBehaviour
         AP.value = newAP;
     }
 
-
-
-
+    // buff and debuff checks
 }

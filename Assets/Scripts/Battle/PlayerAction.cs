@@ -7,17 +7,21 @@ public class PlayerAction : MonoBehaviour
     // components for player options
     public GameObject MainMenu;
     public GameObject ItemMenu;
+    public GameObject FightMenu;
 
     public GameObject MainMenuFirst;
     public GameObject ItemMenuFirst;
+    public GameObject FightMenuFirst;
 
     public BattleSystem System1;
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
-    void Start()
-    {
-        OpenMainMenu();
-    }
 
+    private AttackMenu AttackMenu1;
+
+    public void Start()
+    {
+        FightMenu.SetActive(false);
+        AttackMenu1 = FightMenu.GetComponent<AttackMenu>();
+    }
     // Update is called once per frame
     void Update()
     {
@@ -42,6 +46,7 @@ public class PlayerAction : MonoBehaviour
     {
         MainMenu.SetActive(true);
         ItemMenu.SetActive(false);
+        FightMenu.SetActive(false);
 
         EventSystem.current.SetSelectedGameObject(MainMenuFirst);
     }
@@ -51,7 +56,7 @@ public class PlayerAction : MonoBehaviour
     {
         MainMenu.SetActive(false);
         ItemMenu.SetActive(false);
-
+        FightMenu.SetActive(false);
         EventSystem.current.SetSelectedGameObject(null);
     }
 
@@ -59,8 +64,11 @@ public class PlayerAction : MonoBehaviour
     public void OnPressFight()
     {
         CloseAllMenus();
+        FightMenu.SetActive(true);
+        EventSystem.current.SetSelectedGameObject(FightMenuFirst);
+
         // attack Funciton
-        System1.PlayerAttack();
+        // System1.PlayerAttack();
     }
 
 
@@ -72,6 +80,8 @@ public class PlayerAction : MonoBehaviour
 
         EventSystem.current.SetSelectedGameObject(ItemMenuFirst);
     }
+
+    // switch to attack list on opening fight menu
 
 
 }

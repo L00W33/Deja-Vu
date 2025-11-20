@@ -1,7 +1,9 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Rendering.VirtualTexturing;
 using UnityEngine.TextCore.Text;
+using static UnityEditor.Experimental.GraphView.GraphView;
 
 public enum BattleState
 {
@@ -9,6 +11,8 @@ public enum BattleState
     EnemyTurn,
     PlayerTurn,
     FightStart,
+    Wait,
+    Animation,
     Victory,
     Loss
 }
@@ -32,34 +36,48 @@ public class BattleSystem : MonoBehaviour
 
     // for the scrollbar used when blocking
     public PlayerAction action;
-    public GameObject ScrollBar;
+    public AttackMenu AttackMenu1;
+
+    // variables for animation elements
+    public PointGain PointsAdded;
+    public GameObject TempTransform;
 
     // text box objects
     public Dialogue PlayerDialogueBox;
     public Dialogue EnemyDialogueBox;
+
+    // for NPC attacks
+    public Attacks AllAttacks;
+
+    //used to deturmine NPC behviour
+    int randTurn;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         // sets fight up
 
-        State = BattleState.FightStart;
+        State = BattleState.APphase;
         // spawns combatants
         GameObject PlayerObj = Instantiate(PlayerCharacter, PlayerLocation);
         GameObject EnemyObj = Instantiate(Enemy, EnemyLocation);
 
-        // retrieves states of each combatant
+        // retrieves stats of each combatant
         PlayerUnit = PlayerObj.GetComponent<Fighter>();
         EnemyUnit = EnemyObj.GetComponent<Fighter>();
 
         // sets up huds
         playerHUD.SetHud(PlayerUnit);
         enemyHUD.SetHud(EnemyUnit);
+
+        // given a base value of 0
+        randTurn = 0;
     }
 
     // Update is called once per frame
     void Update()
     {
+        Debug.Log(State);
         // Updates accurate HP values to UI
         playerHUD.SetHP(PlayerUnit.currentHP);
         enemyHUD.SetHP(EnemyUnit.currentHP);
@@ -69,25 +87,13 @@ public class BattleSystem : MonoBehaviour
     }
 
     //function is hear to avoid having needlessly public variables
-    public void PlayerAttack()
+    public void EndPlayerDialogue()
     {
-        if (EnemyUnit.takeDamage(PlayerUnit.attack))
-        {
-            State = BattleState.Victory;
-        }
-        else
-        {
-            State = BattleState.APphase;
-        }
-
         PlayerDialogueBox.gameObject.SetActive(false);
         playerHUD.SetAP(PlayerUnit.currentAP);
     }
 
-    public void EnemyAttack()
-    {
-        Instantiate(ScrollBar);
-    }
+
 
     //exists so curser can reference this file instead of others
     public void PlayerTakesDamage(float damageMultiplier)
@@ -104,8 +110,9 @@ public class BattleSystem : MonoBehaviour
         // victory check
 
         // player takes their turn when they have enough AP
-        if (PlayerUnit.currentAP >= 100 && State != BattleState.EnemyTurn)
+        if (PlayerUnit.currentAP >= 100 && State == BattleState.APphase)
         {
+            AttackMenu1.SetPlayerAttackMenu(PlayerUnit);
             State = BattleState.PlayerTurn;
             action.OpenMainMenu();
             PlayerUnit.currentAP = 0;
@@ -114,12 +121,11 @@ public class BattleSystem : MonoBehaviour
             PlayerDialogueBox.StartDialogue();
             return;
         }
-
-        Debug.Log(State);
         
         // Enemy takes there turn if they have enough AP
-        if (EnemyUnit.currentAP >= 100 && State != BattleState.PlayerTurn)
+        if (EnemyUnit.currentAP >= 100 && State == BattleState.APphase)
         {
+            randTurn = UnityEngine.Random.Range(0, EnemyUnit.MoveList.Length);
             State = BattleState.EnemyTurn;
             EnemyUnit.currentAP = 0;
 
@@ -127,23 +133,41 @@ public class BattleSystem : MonoBehaviour
             EnemyDialogueBox.StartDialogue();
             return;
         }
-        // portion of enemies turn that takes place after the dialogue box
+        // enemies turn that takes place after the dialogue box
         if (State == BattleState.EnemyTurn && EnemyDialogueBox.TextFinished == true)
         {
             EnemyDialogueBox.TextFinished = false;
-            EnemyAttack();
-            enemyHUD.SetAP(EnemyUnit.currentAP);
+
+            AllAttacks.CallByName(EnemyUnit.MoveList[randTurn], PlayerUnit, EnemyUnit);
             return;
         }
 
         // If neither players have enough AP then both players gain AP
         if (State == BattleState.APphase)
-        {
-            PlayerUnit.gainAP();
-            EnemyUnit.gainAP();
-
-            playerHUD.SetAP(PlayerUnit.currentAP);
-            enemyHUD.SetAP(EnemyUnit.currentAP);
-        }
+            StartCoroutine(APanimation(0.7f));
     }
+
+    // coroutine that starts in the APphase, handles AP stats + represents them on screen
+    IEnumerator APanimation(float seconds)
+    {
+        State = BattleState.Wait;
+        PlayerUnit.gainAP();
+        EnemyUnit.gainAP();
+
+        playerHUD.SetAP(PlayerUnit.currentAP);
+        enemyHUD.SetAP(EnemyUnit.currentAP);
+
+        yield return new WaitForSeconds(seconds);
+        State = BattleState.APphase;
+    }
+
 }
+
+
+// psuedocode for short animation
+
+// set phase to animation phase
+// start IEnumerator
+// IEnumerator triggers animation
+// animation ends by the end
+// phase is changed back to AP phase
